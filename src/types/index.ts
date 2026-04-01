@@ -10,6 +10,7 @@ export type Habit = {
   reminderTime: string | null; // "HH:MM"
   config: HabitConfig;
   createdAt: string; // "YYYY-MM-DD"
+  archivedAt: string | null; // "YYYY-MM-DD" or null if active
 };
 
 export type Completion = {

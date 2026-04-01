@@ -8,6 +8,7 @@ export const habits = sqliteTable('habits', {
   reminderTime: text('reminder_time'),
   config: text('config').notNull().default('{"freeDays":[]}'),
   createdAt: text('created_at').notNull(),
+  archivedAt: text('archived_at'),
 });
 
 export const completions = sqliteTable('completions', {

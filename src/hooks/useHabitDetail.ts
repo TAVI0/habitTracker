@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { eq } from 'drizzle-orm';
+import { eq, isNull, and } from 'drizzle-orm';
 import { habits as habitsTable } from '../db/schema';
 import * as schema from '../db/schema';
 import type { Habit, HabitConfig } from '../types';
@@ -28,7 +28,7 @@ export function useHabitDetail(id: number) {
       const rows = await db
         .select()
         .from(habitsTable)
-        .where(eq(habitsTable.id, id))
+        .where(and(eq(habitsTable.id, id), isNull(habitsTable.archivedAt)))
         .limit(1);
       setHabit(rows.length > 0 ? parseHabit(rows[0]) : null);
     } finally {

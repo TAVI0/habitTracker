@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, isNull } from 'drizzle-orm';
 import { habits as habitsTable } from '../db/schema';
 import * as schema from '../db/schema';
 import type { Habit, HabitConfig } from '../types';
@@ -52,6 +52,7 @@ export function useHabits() {
       const rows = await db
         .select()
         .from(habitsTable)
+        .where(isNull(habitsTable.archivedAt))
         .orderBy(desc(habitsTable.createdAt));
       setHabits(rows.map(parseHabit));
     } catch (e) {
@@ -109,9 +110,13 @@ export function useHabits() {
 
   const deleteHabit = useCallback(
     async (id: number): Promise<void> => {
-      // Cancel any scheduled reminder before deleting
+      // Cancel any scheduled reminder before archiving
       await cancelHabitReminderById(id);
-      await db.delete(habitsTable).where(eq(habitsTable.id, id));
+      // Soft delete: set archived_at timestamp instead of hard delete
+      await db
+        .update(habitsTable)
+        .set({ archivedAt: today() })
+        .where(eq(habitsTable.id, id));
       await refetch();
     },
     [db, refetch]
