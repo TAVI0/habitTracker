@@ -102,6 +102,7 @@ export default function HomeScreen() {
         <KebabMenu
           disabled={isExporting}
           items={[
+            { label: 'Archivo', icon: 'archive-outline', onPress: () => router.push('/archive') },
             { label: 'Exportar DB', icon: 'download-outline', onPress: exportDb },
           ]}
         />
