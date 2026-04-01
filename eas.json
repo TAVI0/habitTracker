@@ -10,6 +10,9 @@
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleDebug"
+      },
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       }
     },
     "preview": {
@@ -20,7 +23,7 @@
     },
     "production": {
       "android": {
-        "buildType": "aab"
+        "buildType": "app-bundle"
       }
     }
   }
