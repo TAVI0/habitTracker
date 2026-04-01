@@ -5,6 +5,7 @@ import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { LogBox } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import migrations from '../src/db/migrations/migrations';
 import * as schema from '../src/db/schema';
 import { setupNotificationHandler, requestPermissions } from '../src/utils/notifications';
@@ -48,17 +49,19 @@ void requestPermissions();
 
 export default function RootLayout() {
   return (
-    <SQLiteProvider databaseName="habitTracker.db" useSuspense={false}>
-      <MigrationsGate>
-        <Stack>
-          <Stack.Screen name="index" options={{ title: 'Habits', headerShown: false }} />
-          <Stack.Screen name="add" options={{ presentation: 'modal', headerShown: false }} />
-          <Stack.Screen name="habit/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="habit/[id]/edit" options={{ presentation: 'modal', headerShown: false }} />
-          <Stack.Screen name="archive" options={{ headerShown: false }} />
-        </Stack>
-      </MigrationsGate>
-    </SQLiteProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SQLiteProvider databaseName="habitTracker.db" useSuspense={false}>
+        <MigrationsGate>
+          <Stack>
+            <Stack.Screen name="index" options={{ title: 'Habits', headerShown: false }} />
+            <Stack.Screen name="add" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="habit/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="habit/[id]/edit" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="archive" options={{ headerShown: false }} />
+          </Stack>
+        </MigrationsGate>
+      </SQLiteProvider>
+    </GestureHandlerRootView>
   );
 }
 

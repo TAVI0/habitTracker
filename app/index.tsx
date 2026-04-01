@@ -1,13 +1,13 @@
 import React, { useCallback } from 'react';
 import {
   View,
-  FlatList,
   Text,
   Pressable,
   StyleSheet,
   ActivityIndicator,
   ListRenderItemInfo,
 } from 'react-native';
+import ReorderableList, { reorderItems, useReorderableDrag } from 'react-native-reorderable-list';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,6 +33,7 @@ function HabitCardItem({ habit }: HabitCardItemProps) {
   const router = useRouter();
   const yearStart = `${new Date().getFullYear()}-01-01`;
   const todayStr = today();
+  const drag = useReorderableDrag();
 
   const { completions, toggleCompletion } = useCompletions(
     habit.id,
@@ -57,6 +58,7 @@ function HabitCardItem({ habit }: HabitCardItemProps) {
       streak={streak}
       onToggleToday={handleToggleToday}
       onPress={handlePress}
+      onLongPress={drag}
     />
   );
 }
@@ -65,7 +67,7 @@ function HabitCardItem({ habit }: HabitCardItemProps) {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { habits, loading, refetch } = useHabits();
+  const { habits, loading, refetch, reorderHabits } = useHabits();
   const { exportDb, isExporting } = useExportDb();
 
   // Refetch cada vez que la pantalla vuelve a foco (ej: al volver desde /add)
@@ -81,6 +83,14 @@ export default function HomeScreen() {
   );
 
   const keyExtractor = useCallback((item: Habit) => String(item.id), []);
+
+  const handleReorder = useCallback(
+    ({ from, to }: { from: number; to: number }) => {
+      const newOrder = reorderItems(habits, from, to);
+      reorderHabits(newOrder.map(h => h.id));
+    },
+    [habits, reorderHabits]
+  );
 
   const handleAddPress = useCallback(() => {
     router.push('/add');
@@ -123,10 +133,11 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       ) : (
-        <FlatList
+        <ReorderableList
           data={habits}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
+          onReorder={handleReorder}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />

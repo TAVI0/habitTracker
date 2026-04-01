@@ -11,6 +11,7 @@ export type Habit = {
   config: HabitConfig;
   createdAt: string; // "YYYY-MM-DD"
   archivedAt: string | null; // "YYYY-MM-DD" or null if active
+  position: number; // sort order in active list; normalized from DB (null → 0)
 };
 
 export type Completion = {

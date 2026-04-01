@@ -12,6 +12,7 @@ function parseHabit(row: HabitRow): Habit {
   return {
     ...row,
     config: JSON.parse(row.config) as HabitConfig,
+    position: row.position ?? 0,
   };
 }
 

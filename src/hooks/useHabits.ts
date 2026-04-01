@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { desc, eq, isNull } from 'drizzle-orm';
+import { asc, eq, isNull, sql } from 'drizzle-orm';
 import { habits as habitsTable } from '../db/schema';
 import * as schema from '../db/schema';
 import type { Habit, HabitConfig } from '../types';
@@ -21,6 +21,7 @@ function parseHabit(row: HabitRow): Habit {
   return {
     ...row,
     config: JSON.parse(row.config) as HabitConfig,
+    position: row.position ?? 0,
   };
 }
 
@@ -53,7 +54,7 @@ export function useHabits() {
         .select()
         .from(habitsTable)
         .where(isNull(habitsTable.archivedAt))
-        .orderBy(desc(habitsTable.createdAt));
+        .orderBy(asc(habitsTable.position));
       setHabits(rows.map(parseHabit));
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
@@ -70,6 +71,12 @@ export function useHabits() {
 
   const createHabit = useCallback(
     async (input: CreateHabitInput): Promise<number> => {
+      const maxResult = await db
+        .select({ maxPos: sql<number>`MAX(${habitsTable.position})` })
+        .from(habitsTable)
+        .where(isNull(habitsTable.archivedAt));
+      const nextPosition = (maxResult[0]?.maxPos ?? -1) + 1;
+
       const result = await db.insert(habitsTable).values({
         name: input.name,
         description: input.description ?? null,
@@ -77,6 +84,7 @@ export function useHabits() {
         reminderTime: input.reminderTime ?? null,
         config: JSON.stringify(input.config),
         createdAt: today(),
+        position: nextPosition,
       });
       await refetch();
       return result.lastInsertRowId;
@@ -122,5 +130,17 @@ export function useHabits() {
     [db, refetch]
   );
 
-  return { habits, loading, error, refetch, createHabit, updateHabit, deleteHabit };
+  const reorderHabits = useCallback(
+    async (orderedIds: number[]): Promise<void> => {
+      await Promise.all(
+        orderedIds.map((id, index) =>
+          db.update(habitsTable).set({ position: index }).where(eq(habitsTable.id, id))
+        )
+      );
+      await refetch();
+    },
+    [db, refetch]
+  );
+
+  return { habits, loading, error, refetch, createHabit, updateHabit, deleteHabit, reorderHabits };
 }

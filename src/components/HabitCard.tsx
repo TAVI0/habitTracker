@@ -9,6 +9,7 @@ import type { Habit, StreakResult } from '../types';
 type HabitCardProps = {
   habit: Habit;
   onPress: () => void;
+  onLongPress?: () => void;
   onToggleToday: () => void;
   completionDates: string[];
   streak: StreakResult;
@@ -17,6 +18,7 @@ type HabitCardProps = {
 function HabitCardComponent({
   habit,
   onPress,
+  onLongPress,
   onToggleToday,
   completionDates,
   streak,
@@ -24,6 +26,7 @@ function HabitCardComponent({
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       accessibilityRole="button"
       accessibilityLabel={`Hábito: ${habit.name}`}
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
