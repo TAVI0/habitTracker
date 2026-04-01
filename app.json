@@ -10,11 +10,20 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.mtavio.habittracker",
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
       "expo-sqlite",
-      "expo-router"
-    ]
+      "expo-router",
+      "expo-dev-client"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c5f7ea57-2f31-4275-964f-0ca4df73c71f"
+      }
+    },
+    "owner": "mtavio"
   }
 }
