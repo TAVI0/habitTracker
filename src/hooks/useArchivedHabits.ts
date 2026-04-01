@@ -63,5 +63,19 @@ export function useArchivedHabits() {
     [db, refetch]
   );
 
-  return { habits, loading, error, refetch, permanentDeleteHabit };
+  // ─── Unarchive ─────────────────────────────────────────────────────────────
+  // Restores a habit by setting archived_at back to null.
+
+  const unarchiveHabit = useCallback(
+    async (id: number): Promise<void> => {
+      await db
+        .update(habitsTable)
+        .set({ archivedAt: null })
+        .where(eq(habitsTable.id, id));
+      await refetch();
+    },
+    [db, refetch]
+  );
+
+  return { habits, loading, error, refetch, permanentDeleteHabit, unarchiveHabit };
 }

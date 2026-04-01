@@ -22,12 +22,13 @@ import type { Habit } from '../src/types';
 type ArchivedHabitCardProps = {
   habit: Habit;
   onDelete: (id: number) => void;
+  onUnarchive: (id: number) => void;
 };
 
-function ArchivedHabitCard({ habit, onDelete }: ArchivedHabitCardProps) {
+function ArchivedHabitCard({ habit, onDelete, onUnarchive }: ArchivedHabitCardProps) {
   const handleDelete = () => {
     Alert.alert(
-      'Eliminar permanentemente',
+      'Eliminar hábito',
       `¿Estás seguro que querés eliminar "${habit.name}"? Esta acción no se puede deshacer.`,
       [
         { text: 'Cancelar', style: 'cancel' },
@@ -38,6 +39,10 @@ function ArchivedHabitCard({ habit, onDelete }: ArchivedHabitCardProps) {
         },
       ]
     );
+  };
+
+  const handleUnarchive = () => {
+    onUnarchive(habit.id);
   };
 
   return (
@@ -64,19 +69,36 @@ function ArchivedHabitCard({ habit, onDelete }: ArchivedHabitCardProps) {
         </Text>
       ) : null}
 
-      {/* Delete button */}
-      <Pressable
-        onPress={handleDelete}
-        style={({ pressed }) => [
-          styles.deleteButton,
-          pressed && styles.deleteButtonPressed,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel="Eliminar permanentemente"
-      >
-        <Ionicons name="trash-outline" size={16} color="#FF5722" />
-        <Text style={styles.deleteButtonText}>Eliminar permanentemente</Text>
-      </Pressable>
+      {/* Action buttons */}
+      <View style={styles.actions}>
+        <Pressable
+          onPress={handleUnarchive}
+          style={({ pressed }) => [
+            styles.actionButton,
+            styles.unarchiveButton,
+            pressed && styles.actionButtonPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Desarchivar hábito"
+        >
+          <Ionicons name="arrow-undo-outline" size={16} color={Colors.text.primary} />
+          <Text style={styles.unarchiveButtonText}>Desarchivar</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={handleDelete}
+          style={({ pressed }) => [
+            styles.actionButton,
+            styles.deleteButton,
+            pressed && styles.actionButtonPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Eliminar hábito"
+        >
+          <Ionicons name="trash-outline" size={16} color="#FF5722" />
+          <Text style={styles.deleteButtonText}>Eliminar</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -85,7 +107,7 @@ function ArchivedHabitCard({ habit, onDelete }: ArchivedHabitCardProps) {
 
 export default function ArchiveScreen() {
   const router = useRouter();
-  const { habits, loading, refetch, permanentDeleteHabit } = useArchivedHabits();
+  const { habits, loading, refetch, permanentDeleteHabit, unarchiveHabit } = useArchivedHabits();
 
   // Refetch cada vez que la pantalla vuelve a foco
   useFocusEffect(
@@ -101,11 +123,18 @@ export default function ArchiveScreen() {
     [permanentDeleteHabit]
   );
 
+  const handleUnarchive = useCallback(
+    async (id: number) => {
+      await unarchiveHabit(id);
+    },
+    [unarchiveHabit]
+  );
+
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<Habit>) => (
-      <ArchivedHabitCard habit={item} onDelete={handleDelete} />
+      <ArchivedHabitCard habit={item} onDelete={handleDelete} onUnarchive={handleUnarchive} />
     ),
-    [handleDelete]
+    [handleDelete, handleUnarchive]
   );
 
   const keyExtractor = useCallback((item: Habit) => String(item.id), []);
@@ -253,20 +282,34 @@ const styles = StyleSheet.create({
     color: Colors.text.muted,
     paddingLeft: Spacing.sm + 12,
   },
-  deleteButton: {
+  actions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  actionButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.xs,
     paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    marginTop: Spacing.xs,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: '#FF5722',
   },
-  deleteButtonPressed: {
+  actionButtonPressed: {
     opacity: 0.6,
+  },
+  unarchiveButton: {
+    borderColor: Colors.border,
+  },
+  unarchiveButtonText: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
+    color: Colors.text.primary,
+  },
+  deleteButton: {
+    borderColor: '#FF5722',
   },
   deleteButtonText: {
     fontSize: Typography.sizes.sm,

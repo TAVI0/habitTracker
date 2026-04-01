@@ -55,6 +55,7 @@ export default function RootLayout() {
           <Stack.Screen name="add" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen name="habit/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="habit/[id]/edit" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="archive" options={{ headerShown: false }} />
         </Stack>
       </MigrationsGate>
     </SQLiteProvider>
