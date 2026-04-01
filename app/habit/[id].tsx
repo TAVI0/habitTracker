@@ -50,12 +50,12 @@ export default function HabitDetailScreen() {
 
   const handleDelete = useCallback(() => {
     Alert.alert(
-      'Eliminar hábito',
-      '¿Eliminar este hábito? Esta acción no se puede deshacer.',
+      'Archivar hábito',
+      'Este hábito se ocultará de la pantalla principal pero sus datos se conservarán.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: 'Archivar',
           style: 'destructive',
           onPress: async () => {
             await cancelHabitReminderById(habitId);
@@ -188,9 +188,9 @@ export default function HabitDetailScreen() {
             onPress={handleDelete}
             style={[styles.actionButton, styles.deleteButton]}
             accessibilityRole="button"
-            accessibilityLabel="Eliminar hábito"
+            accessibilityLabel="Archivar hábito"
           >
-            <Text style={styles.deleteButtonText}>Eliminar</Text>
+            <Text style={styles.deleteButtonText}>Archivar</Text>
           </Pressable>
         </View>
       </ScrollView>
