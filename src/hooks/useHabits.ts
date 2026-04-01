@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { desc, eq } from 'drizzle-orm';
 import { habits as habitsTable } from '../db/schema';
+import * as schema from '../db/schema';
 import type { Habit, HabitConfig } from '../types';
 import { today } from '../utils/dateUtils';
 import {
@@ -39,7 +40,7 @@ export function useHabits() {
   const sqliteDb = useSQLiteContext();
   // useMemo ensures the drizzle client is stable across re-renders
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const db = useMemo(() => drizzle(sqliteDb), [sqliteDb]);
+  const db = useMemo(() => drizzle(sqliteDb, { schema }), [sqliteDb]);
 
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);

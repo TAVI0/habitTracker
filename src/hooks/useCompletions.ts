@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { completions as completionsTable } from '../db/schema';
+import * as schema from '../db/schema';
 
 export function useCompletions(
   habitId: number,
@@ -11,7 +12,7 @@ export function useCompletions(
 ) {
   const sqliteDb = useSQLiteContext();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const db = useMemo(() => drizzle(sqliteDb), [sqliteDb]);
+  const db = useMemo(() => drizzle(sqliteDb, { schema }), [sqliteDb]);
 
   const [completions, setCompletions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);

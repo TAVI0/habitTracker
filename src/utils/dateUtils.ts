@@ -1,17 +1,17 @@
 /**
- * Returns today's date as "YYYY-MM-DD".
+ * Returns today's date as "YYYY-MM-DD" in UTC.
  */
 export function today(): string {
   return toISODate(new Date());
 }
 
 /**
- * Converts a Date object to an ISO date string "YYYY-MM-DD".
+ * Converts a Date object to an ISO date string "YYYY-MM-DD" using UTC.
  */
 export function toISODate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
@@ -32,7 +32,7 @@ export function getWeekDates(weekStart: string): string[] {
   for (let i = 0; i < 7; i++) {
     const d = new Date(base);
     d.setUTCDate(base.getUTCDate() + i);
-    result.push(toISODateUTC(d));
+    result.push(toISODate(d));
   }
   return result;
 }
@@ -46,7 +46,7 @@ export function getYearDates(year: number): string[] {
   const end = new Date(`${year + 1}-01-01T00:00:00Z`);
   const current = new Date(start);
   while (current < end) {
-    result.push(toISODateUTC(current));
+    result.push(toISODate(current));
     current.setUTCDate(current.getUTCDate() + 1);
   }
   return result;
@@ -60,12 +60,4 @@ export function getDayOfWeek(date: string): number {
   // Parse as UTC to avoid timezone shifts
   const d = new Date(date + 'T00:00:00Z');
   return d.getUTCDay();
-}
-
-// Internal helper — formats a UTC Date as YYYY-MM-DD
-function toISODateUTC(date: Date): string {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }

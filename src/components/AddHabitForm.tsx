@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { ColorPicker } from './ui/ColorPicker';
 import { DayPicker } from './ui/DayPicker';
+import { TimePicker } from './ui/TimePicker';
 import { Colors, Spacing, Radius, Typography } from '../constants/theme';
 import type { HabitConfig } from '../types';
 import type { CreateHabitInput } from '../hooks/useHabits';
@@ -148,16 +149,10 @@ export function AddHabitForm({ initialValues, onSubmit, onCancel, submitLabel = 
 
       {/* Reminder Time */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Recordatorio (opcional)</Text>
-        <TextInput
-          style={styles.input}
+        <TimePicker
           value={reminderTime}
-          onChangeText={setReminderTime}
-          placeholder="HH:MM"
-          placeholderTextColor={Colors.text.muted}
-          keyboardType="numbers-and-punctuation"
-          maxLength={5}
-          accessibilityLabel="Hora del recordatorio"
+          onChange={setReminderTime}
+          label="Recordatorio (opcional)"
         />
         <Text style={styles.hint}>Formato 24h, ej: 07:30</Text>
       </View>

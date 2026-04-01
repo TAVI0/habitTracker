@@ -58,16 +58,14 @@ export default function HabitDetailScreen() {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            if (habit?.config.notificationId) {
-              await cancelHabitReminderById(habitId);
-            }
+            await cancelHabitReminderById(habitId);
             await deleteHabit(habitId);
             router.replace('/');
           },
         },
       ]
     );
-  }, [habit, habitId, deleteHabit, router]);
+  }, [habitId, deleteHabit, router]);
 
   const handleEdit = useCallback(() => {
     router.push(`/habit/${habitId}/edit`);
@@ -155,14 +153,6 @@ export default function HabitDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Configuración</Text>
           <View style={styles.configCard}>
-            <View style={styles.configRow}>
-              <Text style={styles.configKey}>Tipo de racha</Text>
-              <Text style={styles.configValue}>
-                {habit.config.streakRule.type === 'daily'
-                  ? 'Diario'
-                  : `Semanal (${habit.config.streakRule.requiredCount}×/sem)`}
-              </Text>
-            </View>
             <View style={styles.configRow}>
               <Text style={styles.configKey}>Días activos</Text>
               <Text style={styles.configValue}>

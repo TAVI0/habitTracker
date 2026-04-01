@@ -25,19 +25,3 @@ export type StreakResult = {
 };
 
 export type CellStatus = 'completed' | 'empty' | 'free' | 'future' | 'missed';
-
-
-export type UseHabitsReturn = {
-  habits: Habit[];
-  loading: boolean;
-  error: Error | null;
-  refetch: () => Promise<void>;
-  createHabit: (input: import('../hooks/useHabits').CreateHabitInput) => Promise<number>;
-  deleteHabit: (id: number) => Promise<void>;
-};
-
-export type UseCompletionsReturn = {
-  completionDates: string[];
-  loading: boolean;
-  toggleCompletion: (date: string) => Promise<void>;
-};

@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { eq } from 'drizzle-orm';
 import { habits as habitsTable } from '../db/schema';
+import * as schema from '../db/schema';
 import type { Habit, HabitConfig } from '../types';
 
 type HabitRow = typeof habitsTable.$inferSelect;
@@ -17,7 +18,7 @@ function parseHabit(row: HabitRow): Habit {
 export function useHabitDetail(id: number) {
   const sqliteDb = useSQLiteContext();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const db = useMemo(() => drizzle(sqliteDb), [sqliteDb]);
+  const db = useMemo(() => drizzle(sqliteDb, { schema }), [sqliteDb]);
 
   const [habit, setHabit] = useState<Habit | null>(null);
   const [loading, setLoading] = useState(true);
