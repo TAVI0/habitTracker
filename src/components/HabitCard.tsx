@@ -69,6 +69,7 @@ export const HabitCard = React.memo(HabitCardComponent);
 
 const styles = StyleSheet.create({
   card: {
+    marginBottom: Spacing.md, // Spacing for list (avoids layout shift during drag)
     backgroundColor: Colors.bg.card,
     borderRadius: Radius.lg,
     borderWidth: 1,

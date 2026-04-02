@@ -183,7 +183,6 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: Spacing.md,
-    gap: Spacing.md,
     paddingBottom: FAB_SIZE + Spacing.xl,
   },
   empty: {
