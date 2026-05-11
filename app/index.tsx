@@ -84,18 +84,20 @@ const HabitCardItem = React.memo(
     
     const allEqual = idEqual && nameEqual && descEqual && colorEqual && reminderEqual && createdEqual && configEqual;
     
-    console.log(`[MEMO] Habit ${nextProps.habit.id} - Returning ${allEqual} (${allEqual ? 'SKIP render' : 'WILL render'})`);
-    if (!allEqual) {
-      console.log(`[MEMO] Habit ${nextProps.habit.id} - Changed fields:`, {
-        id: !idEqual,
-        name: !nameEqual,
-        desc: !descEqual,
-        color: !colorEqual,
-        reminder: !reminderEqual,
-        created: !createdEqual,
-        config: !configEqual,
-      });
-      console.log('[MEMO] Prev position:', prevProps.habit.position, 'Next position:', nextProps.habit.position);
+    if (__DEV__) {
+      console.log(`[MEMO] Habit ${nextProps.habit.id} - Returning ${allEqual} (${allEqual ? 'SKIP render' : 'WILL render'})`);
+      if (!allEqual) {
+        console.log(`[MEMO] Habit ${nextProps.habit.id} - Changed fields:`, {
+          id: !idEqual,
+          name: !nameEqual,
+          desc: !descEqual,
+          color: !colorEqual,
+          reminder: !reminderEqual,
+          created: !createdEqual,
+          config: !configEqual,
+        });
+        console.log('[MEMO] Prev position:', prevProps.habit.position, 'Next position:', nextProps.habit.position);
+      }
     }
     
     return allEqual;
@@ -140,11 +142,10 @@ export default function HomeScreen() {
 
   const handleDragEnd = useCallback(
     ({ data }: { data: Habit[] }) => {
-      console.log('[PERF] handleDragEnd called', Date.now());
-      // Extract the new order of IDs
+      if (__DEV__) console.log('[PERF] handleDragEnd called', Date.now());
       const newOrder = data.map((h) => h.id);
       reorderHabits(newOrder);
-      console.log('[PERF] handleDragEnd FINISHED', Date.now());
+      if (__DEV__) console.log('[PERF] handleDragEnd FINISHED', Date.now());
     },
     [reorderHabits]
   );

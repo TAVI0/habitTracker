@@ -81,7 +81,9 @@ function walkBack(
 }
 
 /**
- * Recorre todas las completions y calcula la racha más larga histórica.
+ * Calcula la racha más larga histórica en O(n log n).
+ * Ordena las completions y hace un único pass hacia adelante: si entre dos
+ * fechas consecutivas no hay días obligatorios sin completar, la racha continúa.
  */
 function longestStreak(
   completionSet: Set<string>,
@@ -89,13 +91,35 @@ function longestStreak(
 ): number {
   if (completionSet.size === 0) return 0;
 
-  // Para cada fecha en completions, calculamos la racha que termina en ese día
+  const sorted = [...completionSet].sort();
   let longest = 0;
-  for (const date of completionSet) {
-    const streak = walkBack(completionSet, freeDaySet, date);
-    if (streak > longest) longest = streak;
+  let current = 0;
+  let prev: string | null = null;
+
+  for (const date of sorted) {
+    if (prev === null || missedMandatoryDays(prev, date, freeDaySet) > 0) {
+      current = 1;
+    } else {
+      current++;
+    }
+    if (current > longest) longest = current;
+    prev = date;
   }
+
   return longest;
+}
+
+/**
+ * Cuenta días obligatorios (no libres) entre `from` (exclusive) y `to` (exclusive).
+ */
+function missedMandatoryDays(from: string, to: string, freeDaySet: Set<number>): number {
+  let count = 0;
+  let cursor = nextDay(from);
+  while (cursor < to) {
+    if (!freeDaySet.has(getDayOfWeek(cursor))) count++;
+    cursor = nextDay(cursor);
+  }
+  return count;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -103,6 +127,12 @@ function longestStreak(
 function prevDay(date: string): string {
   const d = new Date(date + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() - 1);
+  return toISO(d);
+}
+
+function nextDay(date: string): string {
+  const d = new Date(date + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + 1);
   return toISO(d);
 }
 

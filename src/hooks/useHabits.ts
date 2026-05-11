@@ -159,36 +159,16 @@ export function useHabits() {
 
   const reorderHabits = useCallback(
     (newOrder: number[]): void => {
-      console.log('🚀 OPTIMISTIC UI ACTIVE - New code loaded!');
-      console.log('[PERF] reorderHabits called', Date.now());
-      
-      // Store original state for rollback
       const originalHabits = habits;
-      
-      // 1. Update UI IMMEDIATELY (optimistic)
-      console.log('[PERF] BEFORE applyReorderLocally', Date.now());
       const reorderedHabits = applyReorderLocally(habits, newOrder);
-      console.log('[PERF] AFTER applyReorderLocally', Date.now());
-      
-      console.log('[PERF] BEFORE setHabits()', Date.now());
       setHabits(reorderedHabits);
-      console.log('[PERF] AFTER setHabits()', Date.now());
-      
-      // 2. Persist to DB in background (no await)
-      console.log('[PERF] persistReorderInTransaction starting', Date.now());
+
       persistReorderInTransaction(newOrder)
-        .then(() => {
-          console.log('[PERF] persistReorderInTransaction completed successfully', Date.now());
-        })
         .catch((error) => {
-          // 3. Rollback on error
-          console.log('[PERF] persistReorderInTransaction failed', Date.now());
           console.error('Failed to reorder habits:', error);
           setHabits(originalHabits);
           showToast('Error al reordenar hábitos');
         });
-      
-      console.log('[PERF] reorderHabits function exiting', Date.now());
     },
     [habits, persistReorderInTransaction]
   );

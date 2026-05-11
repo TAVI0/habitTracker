@@ -23,7 +23,7 @@ function HabitCardComponent({
   completionDates,
   streak,
 }: HabitCardProps) {
-  console.log('[PERF] HabitCard RENDER -', habit.id, habit.name);
+  if (__DEV__) console.log('[PERF] HabitCard RENDER -', habit.id, habit.name);
   return (
     <Pressable
       onPress={onPress}
