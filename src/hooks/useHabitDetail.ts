@@ -6,6 +6,7 @@ import { habits as habitsTable } from '../db/schema';
 import * as schema from '../db/schema';
 import type { Habit } from '../types';
 import { parseHabit } from '../db/parsers';
+import { showToast } from '../utils/toast';
 
 export function useHabitDetail(id: number) {
   const sqliteDb = useSQLiteContext();
@@ -14,15 +15,21 @@ export function useHabitDetail(id: number) {
 
   const [habit, setHabit] = useState<Habit | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   const refetch = useCallback(async () => {
     try {
+      setError(null);
       const rows = await db
         .select()
         .from(habitsTable)
         .where(and(eq(habitsTable.id, id), isNull(habitsTable.archivedAt)))
         .limit(1);
       setHabit(rows.length > 0 ? parseHabit(rows[0]) : null);
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      setError(err);
+      showToast('Error al cargar el hábito');
     } finally {
       setLoading(false);
     }
@@ -32,5 +39,5 @@ export function useHabitDetail(id: number) {
     refetch();
   }, [refetch]);
 
-  return { habit, loading, refetch };
+  return { habit, loading, error, refetch };
 }

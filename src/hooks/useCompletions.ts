@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { eq, and, gte, lte } from 'drizzle-orm';
@@ -13,7 +13,8 @@ type CacheEntry = {
 };
 
 const completionsCache = new Map<CacheKey, CacheEntry>();
-const CACHE_TTL_MS = 5000; // Cache valid for 5 seconds
+const CACHE_TTL_MS = 5000;
+const CACHE_MAX_SIZE = 50;
 
 function getCacheKey(habitId: number, fromDate: string, toDate: string): CacheKey {
   return `${habitId}-${fromDate}-${toDate}`;
@@ -33,6 +34,11 @@ function getCachedCompletions(key: CacheKey): string[] | null {
 }
 
 function setCachedCompletions(key: CacheKey, completions: string[]): void {
+  if (completionsCache.size >= CACHE_MAX_SIZE) {
+    // Evict oldest entry (Map preserves insertion order)
+    const firstKey = completionsCache.keys().next().value;
+    if (firstKey !== undefined) completionsCache.delete(firstKey);
+  }
   completionsCache.set(key, {
     completions,
     timestamp: Date.now(),
@@ -54,6 +60,7 @@ export function useCompletions(
   
   const [completions, setCompletions] = useState<string[]>(initialCompletions);
   const [loading, setLoading] = useState(initialCompletions.length === 0);
+  const isToggling = useRef(false);
 
   const refetch = useCallback(async () => {
     try {
@@ -93,6 +100,9 @@ export function useCompletions(
 
   const toggleCompletion = useCallback(
     async (date: string): Promise<void> => {
+      if (isToggling.current) return;
+      isToggling.current = true;
+      try {
       // Check if a completion exists for this date
       const existing = await db
         .select({ id: completionsTable.id })
@@ -119,6 +129,9 @@ export function useCompletions(
       const cacheKey = getCacheKey(habitId, fromDate, toDate);
       completionsCache.delete(cacheKey);
       await refetch();
+      } finally {
+        isToggling.current = false;
+      }
     },
     [db, habitId, fromDate, toDate, refetch]
   );
