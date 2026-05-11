@@ -11,21 +11,7 @@ import {
   rescheduleHabitReminder,
 } from '../utils/notifications';
 import { showToast } from '../utils/toast';
-
-// ─── Config JSON boundary ────────────────────────────────────────────────────
-// parseHabit() is the ONLY place that casts the raw DB string → HabitConfig.
-// Nothing past this hook boundary ever deals with a raw JSON string.
-
-type HabitRow = typeof habitsTable.$inferSelect;
-
-function parseHabit(row: HabitRow): Habit {
-  return {
-    ...row,
-    config: JSON.parse(row.config) as HabitConfig,
-    position: row.position ?? 0,
-    reminderEnabled: row.reminderEnabled === 1,
-  };
-}
+import { parseHabit } from '../db/parsers';
 
 
 // ─── Helper functions for optimistic UI ──────────────────────────────────────

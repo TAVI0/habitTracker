@@ -4,21 +4,8 @@ import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { desc, eq, isNotNull } from 'drizzle-orm';
 import { habits as habitsTable } from '../db/schema';
 import * as schema from '../db/schema';
-import type { Habit, HabitConfig } from '../types';
-
-// ─── Config JSON boundary ────────────────────────────────────────────────────
-// parseHabit() is the ONLY place that casts the raw DB string → HabitConfig.
-// Nothing past this hook boundary ever deals with a raw JSON string.
-
-type HabitRow = typeof habitsTable.$inferSelect;
-
-function parseHabit(row: HabitRow): Habit {
-  return {
-    ...row,
-    config: JSON.parse(row.config) as HabitConfig,
-    position: row.position ?? 0,
-  };
-}
+import type { Habit } from '../types';
+import { parseHabit } from '../db/parsers';
 
 // ─── Hook for Archived Habits ────────────────────────────────────────────────
 

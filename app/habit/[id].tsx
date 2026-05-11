@@ -163,7 +163,7 @@ export default function HabitDetailScreen() {
                   : activeDays.map((d) => DAY_LABELS[d]).join(', ')}
               </Text>
             </View>
-            {habit.reminderTime ? (
+            {habit.reminderEnabled && habit.reminderTime ? (
               <View style={styles.configRow}>
                 <Text style={styles.configKey}>Recordatorio</Text>
                 <Text style={styles.configValue}>{habit.reminderTime}</Text>

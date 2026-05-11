@@ -4,17 +4,8 @@ import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { eq, isNull, and } from 'drizzle-orm';
 import { habits as habitsTable } from '../db/schema';
 import * as schema from '../db/schema';
-import type { Habit, HabitConfig } from '../types';
-
-type HabitRow = typeof habitsTable.$inferSelect;
-
-function parseHabit(row: HabitRow): Habit {
-  return {
-    ...row,
-    config: JSON.parse(row.config) as HabitConfig,
-    position: row.position ?? 0,
-  };
-}
+import type { Habit } from '../types';
+import { parseHabit } from '../db/parsers';
 
 export function useHabitDetail(id: number) {
   const sqliteDb = useSQLiteContext();
