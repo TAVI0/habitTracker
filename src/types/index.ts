@@ -8,6 +8,7 @@ export type Habit = {
   description: string | null;
   color: string;
   reminderTime: string | null; // "HH:MM"
+  reminderEnabled: boolean;
   config: HabitConfig;
   createdAt: string; // "YYYY-MM-DD"
   archivedAt: string | null; // "YYYY-MM-DD" or null if active

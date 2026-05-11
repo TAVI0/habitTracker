@@ -56,6 +56,7 @@ export default function EditHabitScreen() {
           name: habit.name,
           description: habit.description,
           color: habit.color,
+          reminderEnabled: habit.reminderEnabled,
           reminderTime: habit.reminderTime,
           config: habit.config,
         }}

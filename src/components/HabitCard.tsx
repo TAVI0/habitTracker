@@ -23,6 +23,7 @@ function HabitCardComponent({
   completionDates,
   streak,
 }: HabitCardProps) {
+  console.log('[PERF] HabitCard RENDER -', habit.id, habit.name);
   return (
     <Pressable
       onPress={onPress}
@@ -37,7 +38,7 @@ function HabitCardComponent({
           {habit.name}
         </Text>
         <View style={styles.topRight}>
-          <StreakBadge streak={streak} color={habit.color} />
+          <StreakBadge streak={streak} color={habit.color} reminderTime={habit.reminderTime} reminderEnabled={habit.reminderEnabled} />
           <CheckboxToday
             completed={streak.isActiveToday}
             color={habit.color}
@@ -46,7 +47,7 @@ function HabitCardComponent({
         </View>
       </View>
 
-      {/* Calendar — 52 semanas, scrolleado al día de hoy */}
+      {/* Calendar � 52 semanas, scrolleado al d�a de hoy */}
       <View style={styles.calendarWrapper}>
         <Calendar
           completionDates={completionDates}
@@ -55,7 +56,7 @@ function HabitCardComponent({
         />
       </View>
 
-      {/* Descripción opcional */}
+      {/* Descripci�n opcional */}
       {habit.description ? (
         <Text style={styles.description} numberOfLines={1}>
           {habit.description}
@@ -65,7 +66,27 @@ function HabitCardComponent({
   );
 }
 
-export const HabitCard = React.memo(HabitCardComponent);
+// Custom memo comparator to prevent unnecessary re-renders
+const arePropsEqual = (
+  prevProps: HabitCardProps,
+  nextProps: HabitCardProps
+): boolean => {
+  // Only re-render if actual data changes (ignore position)
+  return (
+    prevProps.habit.id === nextProps.habit.id &&
+    prevProps.habit.name === nextProps.habit.name &&
+    prevProps.habit.description === nextProps.habit.description &&
+    prevProps.habit.color === nextProps.habit.color &&
+    prevProps.habit.reminderTime === nextProps.habit.reminderTime &&
+    prevProps.habit.reminderEnabled === nextProps.habit.reminderEnabled &&
+    prevProps.completionDates === nextProps.completionDates &&
+    prevProps.streak.current === nextProps.streak.current &&
+    prevProps.streak.longest === nextProps.streak.longest &&
+    prevProps.streak.isActiveToday === nextProps.streak.isActiveToday
+  );
+};
+
+export const HabitCard = React.memo(HabitCardComponent, arePropsEqual);
 
 const styles = StyleSheet.create({
   card: {

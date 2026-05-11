@@ -5,6 +5,40 @@ import { eq, and, gte, lte } from 'drizzle-orm';
 import { completions as completionsTable } from '../db/schema';
 import * as schema from '../db/schema';
 
+// Module-level cache to prevent redundant queries during re-mounts
+type CacheKey = string;
+type CacheEntry = {
+  completions: string[];
+  timestamp: number;
+};
+
+const completionsCache = new Map<CacheKey, CacheEntry>();
+const CACHE_TTL_MS = 5000; // Cache valid for 5 seconds
+
+function getCacheKey(habitId: number, fromDate: string, toDate: string): CacheKey {
+  return `${habitId}-${fromDate}-${toDate}`;
+}
+
+function getCachedCompletions(key: CacheKey): string[] | null {
+  const entry = completionsCache.get(key);
+  if (!entry) return null;
+  
+  const now = Date.now();
+  if (now - entry.timestamp > CACHE_TTL_MS) {
+    completionsCache.delete(key);
+    return null;
+  }
+  
+  return entry.completions;
+}
+
+function setCachedCompletions(key: CacheKey, completions: string[]): void {
+  completionsCache.set(key, {
+    completions,
+    timestamp: Date.now(),
+  });
+}
+
 export function useCompletions(
   habitId: number,
   fromDate: string,
@@ -14,11 +48,26 @@ export function useCompletions(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const db = useMemo(() => drizzle(sqliteDb, { schema }), [sqliteDb]);
 
-  const [completions, setCompletions] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Initialize state with cached value if available (prevents flicker on re-mount)
+  const cacheKey = getCacheKey(habitId, fromDate, toDate);
+  const initialCompletions = getCachedCompletions(cacheKey) ?? [];
+  
+  const [completions, setCompletions] = useState<string[]>(initialCompletions);
+  const [loading, setLoading] = useState(initialCompletions.length === 0);
 
   const refetch = useCallback(async () => {
     try {
+      const cacheKey = getCacheKey(habitId, fromDate, toDate);
+      const cached = getCachedCompletions(cacheKey);
+      
+      if (cached !== null) {
+        // Cache hit - return immediately without query
+        setCompletions(cached);
+        setLoading(false);
+        return;
+      }
+      
+      // Cache miss - query database
       const rows = await db
         .select({ date: completionsTable.date })
         .from(completionsTable)
@@ -29,7 +78,10 @@ export function useCompletions(
             lte(completionsTable.date, toDate)
           )
         );
-      setCompletions(rows.map((r) => r.date));
+      
+      const completionDates = rows.map((r) => r.date);
+      setCachedCompletions(cacheKey, completionDates);
+      setCompletions(completionDates);
     } finally {
       setLoading(false);
     }
@@ -63,9 +115,12 @@ export function useCompletions(
         await db.insert(completionsTable).values({ habitId, date });
       }
 
+      // Invalidate cache after mutation
+      const cacheKey = getCacheKey(habitId, fromDate, toDate);
+      completionsCache.delete(cacheKey);
       await refetch();
     },
-    [db, habitId, refetch]
+    [db, habitId, fromDate, toDate, refetch]
   );
 
   return { completions, loading, refetch, toggleCompletion };

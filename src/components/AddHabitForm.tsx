@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
 } from 'react-native';
 import { ColorPicker } from './ui/ColorPicker';
 import { DayPicker } from './ui/DayPicker';
@@ -51,7 +52,9 @@ export function AddHabitForm({ initialValues, onSubmit, onCancel, submitLabel = 
   const [name, setName] = useState(initialValues?.name ?? '');
   const [description, setDescription] = useState(initialValues?.description ?? '');
   const [color, setColor] = useState(initialValues?.color ?? Colors.accent[0]);
-  const [reminderTime, setReminderTime] = useState(initialValues?.reminderTime ?? '');
+  const [reminderEnabled, setReminderEnabled] = useState(initialValues?.reminderEnabled ?? !!initialValues?.reminderTime);
+  // savedReminderTime preserves the time even when switch is off
+  const [savedReminderTime, setSavedReminderTime] = useState(initialValues?.reminderTime ?? '');
   const [config, setConfig] = useState<HabitConfig>(
     initialValues?.config ?? DEFAULT_CONFIG
   );
@@ -68,19 +71,10 @@ export function AddHabitForm({ initialValues, onSubmit, onCancel, submitLabel = 
       return;
     }
 
-    // Validate reminderTime format if provided
-    const trimmedTime = reminderTime.trim();
+    // Only validate and submit reminderTime if reminder is enabled
+    const trimmedTime = savedReminderTime.trim();
     const isValidTime = trimmedTime === '' || /^\d{2}:\d{2}$/.test(trimmedTime);
-    if (!isValidTime) {
-      setErrors({ ...validationErrors, name: undefined });
-      // Just clear the reminder if invalid format
-      onSubmit({
-        name: name.trim(),
-        description: description.trim() || null,
-        color,
-        reminderTime: null,
-        config,
-      });
+    if (reminderEnabled && !isValidTime) {
       return;
     }
 
@@ -88,10 +82,11 @@ export function AddHabitForm({ initialValues, onSubmit, onCancel, submitLabel = 
       name: name.trim(),
       description: description.trim() || null,
       color,
+      reminderEnabled,
       reminderTime: trimmedTime || null,
       config,
     });
-  }, [name, description, color, reminderTime, config, onSubmit]);
+  }, [name, description, color, reminderEnabled, savedReminderTime, config, onSubmit]);
 
   return (
     <ScrollView
@@ -150,9 +145,11 @@ export function AddHabitForm({ initialValues, onSubmit, onCancel, submitLabel = 
       {/* Reminder Time */}
       <View style={styles.fieldGroup}>
         <TimePicker
-          value={reminderTime}
-          onChange={setReminderTime}
-          label="Recordatorio (opcional)"
+          value={savedReminderTime}
+          onChange={setSavedReminderTime}
+          label="Recordatorio"
+          enabled={reminderEnabled}
+          onEnabledChange={setReminderEnabled}
         />
         <Text style={styles.hint}>Formato 24h, ej: 07:30</Text>
       </View>

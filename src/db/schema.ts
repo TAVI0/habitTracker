@@ -6,6 +6,7 @@ export const habits = sqliteTable('habits', {
   description: text('description'),
   color: text('color').notNull().default('#6366F1'),
   reminderTime: text('reminder_time'),
+  reminderEnabled: int('reminder_enabled').notNull().default(0),
   config: text('config').notNull().default('{"freeDays":[]}'),
   createdAt: text('created_at').notNull(),
   archivedAt: text('archived_at'),

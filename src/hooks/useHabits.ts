@@ -10,6 +10,7 @@ import {
   cancelHabitReminderById,
   rescheduleHabitReminder,
 } from '../utils/notifications';
+import { showToast } from '../utils/toast';
 
 // ─── Config JSON boundary ────────────────────────────────────────────────────
 // parseHabit() is the ONLY place that casts the raw DB string → HabitConfig.
@@ -22,9 +23,20 @@ function parseHabit(row: HabitRow): Habit {
     ...row,
     config: JSON.parse(row.config) as HabitConfig,
     position: row.position ?? 0,
+    reminderEnabled: row.reminderEnabled === 1,
   };
 }
 
+
+// ─── Helper functions for optimistic UI ──────────────────────────────────────
+
+// Pure function to reorder habits array based on new ID order
+const applyReorderLocally = (habits: Habit[], newOrder: number[]): Habit[] => {
+  const orderMap = new Map(newOrder.map((id, index) => [id, index]));
+  return [...habits].sort((a, b) => 
+    (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0)
+  );
+};
 // ─── Input type ──────────────────────────────────────────────────────────────
 
 export type CreateHabitInput = {
@@ -32,6 +44,7 @@ export type CreateHabitInput = {
   description?: string | null;
   color: string;
   reminderTime?: string | null;
+  reminderEnabled: boolean;
   config: HabitConfig;
 };
 
@@ -82,10 +95,21 @@ export function useHabits() {
         description: input.description ?? null,
         color: input.color,
         reminderTime: input.reminderTime ?? null,
+        reminderEnabled: input.reminderEnabled ? 1 : 0,
         config: JSON.stringify(input.config),
         createdAt: today(),
         position: nextPosition,
       });
+
+      // Schedule notification only if reminder is enabled and time is set
+      if (input.reminderEnabled && input.reminderTime) {
+        await rescheduleHabitReminder(
+          Number(result.lastInsertRowId),
+          input.name,
+          input.reminderTime
+        );
+      }
+
       await refetch();
       return result.lastInsertRowId;
     },
@@ -98,13 +122,15 @@ export function useHabits() {
       if (input.name !== undefined) patch.name = input.name;
       if (input.description !== undefined) patch.description = input.description ?? null;
       if (input.color !== undefined) patch.color = input.color;
-      if (input.reminderTime !== undefined) patch.reminderTime = input.reminderTime ?? null;
       if (input.config !== undefined) patch.config = JSON.stringify(input.config);
+      if (input.reminderTime !== undefined) patch.reminderTime = input.reminderTime ?? null;
+      if (input.reminderEnabled !== undefined) patch.reminderEnabled = input.reminderEnabled ? 1 : 0;
 
-      // Reschedule reminder if reminderTime changed
-      if (input.reminderTime !== undefined) {
-        const name = input.name ?? '';
-        await rescheduleHabitReminder(id, name, input.reminderTime ?? null);
+      // Handle notifications
+      if (input.reminderEnabled === true && input.reminderTime) {
+        await rescheduleHabitReminder(id, input.name ?? '', input.reminderTime);
+      } else if (input.reminderEnabled === false) {
+        await cancelHabitReminderById(id);
       }
 
       await db
@@ -130,16 +156,55 @@ export function useHabits() {
     [db, refetch]
   );
 
-  const reorderHabits = useCallback(
-    async (orderedIds: number[]): Promise<void> => {
-      await Promise.all(
-        orderedIds.map((id, index) =>
-          db.update(habitsTable).set({ position: index }).where(eq(habitsTable.id, id))
-        )
-      );
-      await refetch();
+  // Async persist function with transaction
+  const persistReorderInTransaction = useCallback(
+    async (newOrder: number[]): Promise<void> => {
+      await db.transaction(async (tx) => {
+        for (let i = 0; i < newOrder.length; i++) {
+          await tx
+            .update(habitsTable)
+            .set({ position: i })
+            .where(eq(habitsTable.id, newOrder[i]));
+        }
+      });
     },
-    [db, refetch]
+    [db]
+  );
+
+  const reorderHabits = useCallback(
+    (newOrder: number[]): void => {
+      console.log('🚀 OPTIMISTIC UI ACTIVE - New code loaded!');
+      console.log('[PERF] reorderHabits called', Date.now());
+      
+      // Store original state for rollback
+      const originalHabits = habits;
+      
+      // 1. Update UI IMMEDIATELY (optimistic)
+      console.log('[PERF] BEFORE applyReorderLocally', Date.now());
+      const reorderedHabits = applyReorderLocally(habits, newOrder);
+      console.log('[PERF] AFTER applyReorderLocally', Date.now());
+      
+      console.log('[PERF] BEFORE setHabits()', Date.now());
+      setHabits(reorderedHabits);
+      console.log('[PERF] AFTER setHabits()', Date.now());
+      
+      // 2. Persist to DB in background (no await)
+      console.log('[PERF] persistReorderInTransaction starting', Date.now());
+      persistReorderInTransaction(newOrder)
+        .then(() => {
+          console.log('[PERF] persistReorderInTransaction completed successfully', Date.now());
+        })
+        .catch((error) => {
+          // 3. Rollback on error
+          console.log('[PERF] persistReorderInTransaction failed', Date.now());
+          console.error('Failed to reorder habits:', error);
+          setHabits(originalHabits);
+          showToast('Error al reordenar hábitos');
+        });
+      
+      console.log('[PERF] reorderHabits function exiting', Date.now());
+    },
+    [habits, persistReorderInTransaction]
   );
 
   return { habits, loading, error, refetch, createHabit, updateHabit, deleteHabit, reorderHabits };

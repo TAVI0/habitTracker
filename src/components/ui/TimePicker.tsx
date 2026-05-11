@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, Platform, TextInput, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Platform, TextInput, StyleSheet, Switch } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Colors, Spacing, Radius, Typography } from '../../constants/theme';
 
@@ -7,15 +7,20 @@ type TimePickerProps = {
   value: string; // "HH:MM" format
   onChange: (time: string) => void;
   label?: string;
+  enabled?: boolean;
+  onEnabledChange?: (enabled: boolean) => void;
 };
 
 /**
  * Cross-platform time picker component.
  * - iOS/Android: Native time picker with 24-hour format
  * - Web: TextInput fallback with HH:MM placeholder
+ * - Optional enabled switch to toggle reminder on/off
  */
-export function TimePicker({ value, onChange, label }: TimePickerProps) {
+export function TimePicker({ value, onChange, label, enabled, onEnabledChange }: TimePickerProps) {
   const [showPicker, setShowPicker] = useState(false);
+
+  const isEnabled = enabled ?? true;
 
   // Convert "HH:MM" string to Date object
   const timeToDate = (timeStr: string): Date => {
@@ -50,16 +55,28 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
     return (
       <View style={styles.container}>
         {label && <Text style={styles.label}>{label}</Text>}
-        <TextInput
-          style={styles.input}
-          value={value}
-          onChangeText={onChange}
-          placeholder="HH:MM"
-          placeholderTextColor={Colors.text.muted}
-          keyboardType="numbers-and-punctuation"
-          maxLength={5}
-          accessibilityLabel={label || 'Hora'}
-        />
+        <View style={styles.row}>
+          {onEnabledChange && (
+            <Switch
+              value={isEnabled}
+              onValueChange={onEnabledChange}
+              trackColor={{ false: Colors.border, true: Colors.accent[0] }}
+              thumbColor={Colors.text.primary}
+              accessibilityLabel="Activar recordatorio"
+            />
+          )}
+          <TextInput
+            style={[styles.input, !isEnabled && styles.inputDisabled]}
+            value={value}
+            onChangeText={onChange}
+            placeholder="HH:MM"
+            placeholderTextColor={Colors.text.muted}
+            keyboardType="numbers-and-punctuation"
+            maxLength={5}
+            editable={isEnabled}
+            accessibilityLabel={label || 'Hora'}
+          />
+        </View>
       </View>
     );
   }
@@ -68,16 +85,29 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <Pressable
-        onPress={() => setShowPicker(true)}
-        style={styles.timeButton}
-        accessibilityRole="button"
-        accessibilityLabel={label || 'Seleccionar hora'}
-      >
-        <Text style={styles.timeText}>{value || 'HH:MM'}</Text>
-      </Pressable>
+      <View style={styles.row}>
+        {onEnabledChange && (
+          <Switch
+            value={isEnabled}
+            onValueChange={onEnabledChange}
+            trackColor={{ false: Colors.border, true: Colors.accent[0] }}
+            thumbColor={Colors.text.primary}
+            accessibilityLabel="Activar recordatorio"
+          />
+        )}
+        <Pressable
+          onPress={() => isEnabled && setShowPicker(true)}
+          style={[styles.timeButton, !isEnabled && styles.timeButtonDisabled]}
+          accessibilityRole="button"
+          accessibilityLabel={label || 'Seleccionar hora'}
+        >
+          <Text style={[styles.timeText, !isEnabled && styles.timeTextDisabled]}>
+            {isEnabled ? (value || 'HH:MM') : value || 'Desactivado'}
+          </Text>
+        </Pressable>
+      </View>
 
-      {showPicker && (
+      {showPicker && isEnabled && (
         <DateTimePicker
           value={timeToDate(value)}
           mode="time"
@@ -97,6 +127,11 @@ const styles = StyleSheet.create({
   container: {
     gap: Spacing.xs,
   },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   label: {
     fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.semibold,
@@ -105,6 +140,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   timeButton: {
+    flex: 1,
     backgroundColor: Colors.bg.input,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -114,12 +150,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  timeButtonDisabled: {
+    opacity: 0.5,
+  },
   timeText: {
     fontSize: Typography.sizes.md,
     color: Colors.text.primary,
     fontWeight: Typography.weights.medium,
   },
+  timeTextDisabled: {
+    color: Colors.text.muted,
+  },
   input: {
+    flex: 1,
     backgroundColor: Colors.bg.input,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -128,5 +171,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm + 2,
     fontSize: Typography.sizes.md,
     color: Colors.text.primary,
+  },
+  inputDisabled: {
+    opacity: 0.5,
   },
 });

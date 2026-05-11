@@ -140,3 +140,9 @@ export async function rescheduleHabitReminder(
   if (!newTime) return null;
   return scheduleHabitReminder(habitId, habitName, newTime);
 }
+
+export async function cancelAllReminders(): Promise<void> {
+  const notifs = await getNotifications();
+  if (!notifs) return;
+  await notifs.cancelAllScheduledNotificationsAsync();
+}

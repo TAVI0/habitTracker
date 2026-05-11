@@ -1,13 +1,15 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
   Pressable,
   StyleSheet,
   ActivityIndicator,
-  ListRenderItemInfo,
 } from 'react-native';
-import ReorderableList, { reorderItems, useReorderableDrag } from 'react-native-reorderable-list';
+import DraggableFlatList, {
+  ScaleDecorator,
+  RenderItemParams,
+} from 'react-native-draggable-flatlist';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +21,7 @@ import { useStreak } from '../src/hooks/useStreak';
 import { useExportDb } from '../src/hooks/useExportDb';
 import { Colors, Spacing, Radius, Typography } from '../src/constants/theme';
 import { today } from '../src/utils/dateUtils';
+import { cancelAllReminders } from '../src/utils/notifications';
 import type { Habit } from '../src/types';
 
 // ─── Per-card data bridge ────────────────────────────────────────────────────
@@ -27,13 +30,13 @@ import type { Habit } from '../src/types';
 
 type HabitCardItemProps = {
   habit: Habit;
+  onLongPress?: () => void;
 };
 
-function HabitCardItem({ habit }: HabitCardItemProps) {
+function HabitCardItemComponent({ habit, onLongPress }: HabitCardItemProps) {
   const router = useRouter();
   const yearStart = `${new Date().getFullYear()}-01-01`;
   const todayStr = today();
-  const drag = useReorderableDrag();
 
   const { completions, toggleCompletion } = useCompletions(
     habit.id,
@@ -58,10 +61,50 @@ function HabitCardItem({ habit }: HabitCardItemProps) {
       streak={streak}
       onToggleToday={handleToggleToday}
       onPress={handlePress}
-      onLongPress={drag}
+      onLongPress={onLongPress}
     />
   );
 }
+
+// Memo with custom comparator - only re-render if habit data actually changed
+const HabitCardItem = React.memo(
+  HabitCardItemComponent,
+  (prevProps, nextProps) => {
+    // Return true if props are equal (should NOT re-render)
+    // Return false if props are different (SHOULD re-render)
+    
+    const idEqual = prevProps.habit.id === nextProps.habit.id;
+    const nameEqual = prevProps.habit.name === nextProps.habit.name;
+    const descEqual = prevProps.habit.description === nextProps.habit.description;
+    const colorEqual = prevProps.habit.color === nextProps.habit.color;
+    const reminderEqual = prevProps.habit.reminderTime === nextProps.habit.reminderTime &&
+      prevProps.habit.reminderEnabled === nextProps.habit.reminderEnabled;
+    const createdEqual = prevProps.habit.createdAt === nextProps.habit.createdAt;
+    const configEqual = JSON.stringify(prevProps.habit.config) === JSON.stringify(nextProps.habit.config);
+    
+    const allEqual = idEqual && nameEqual && descEqual && colorEqual && reminderEqual && createdEqual && configEqual;
+    
+    console.log(`[MEMO] Habit ${nextProps.habit.id} - Returning ${allEqual} (${allEqual ? 'SKIP render' : 'WILL render'})`);
+    if (!allEqual) {
+      console.log(`[MEMO] Habit ${nextProps.habit.id} - Changed fields:`, {
+        id: !idEqual,
+        name: !nameEqual,
+        desc: !descEqual,
+        color: !colorEqual,
+        reminder: !reminderEqual,
+        created: !createdEqual,
+        config: !configEqual,
+      });
+      console.log('[MEMO] Prev position:', prevProps.habit.position, 'Next position:', nextProps.habit.position);
+    }
+    
+    return allEqual;
+  }
+);
+
+// ─── Draggable FlashList ─────────────────────────────────────────────────────
+// Temporary: Use regular FlatList until drag implementation is fixed
+// This eliminates the JS thread blocking from react-native-reorderable-list
 
 // ─── Home Screen ─────────────────────────────────────────────────────────────
 
@@ -70,26 +113,40 @@ export default function HomeScreen() {
   const { habits, loading, refetch, reorderHabits } = useHabits();
   const { exportDb, isExporting } = useExportDb();
 
-  // Refetch cada vez que la pantalla vuelve a foco (ej: al volver desde /add)
+  // Refetch only when returning from another screen (not on initial mount or drag)
+  const isInitialMount = React.useRef(true);
+
   useFocusEffect(
     useCallback(() => {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
+      // Only refetch when coming back from another screen
       refetch();
     }, [refetch])
   );
 
   const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<Habit>) => <HabitCardItem habit={item} />,
+    ({ item, drag, isActive }: RenderItemParams<Habit>) => (
+      <ScaleDecorator>
+        <HabitCardItem habit={item} onLongPress={drag} />
+      </ScaleDecorator>
+    ),
     []
   );
 
   const keyExtractor = useCallback((item: Habit) => String(item.id), []);
 
-  const handleReorder = useCallback(
-    ({ from, to }: { from: number; to: number }) => {
-      const newOrder = reorderItems(habits, from, to);
-      reorderHabits(newOrder.map(h => h.id));
+  const handleDragEnd = useCallback(
+    ({ data }: { data: Habit[] }) => {
+      console.log('[PERF] handleDragEnd called', Date.now());
+      // Extract the new order of IDs
+      const newOrder = data.map((h) => h.id);
+      reorderHabits(newOrder);
+      console.log('[PERF] handleDragEnd FINISHED', Date.now());
     },
-    [habits, reorderHabits]
+    [reorderHabits]
   );
 
   const handleAddPress = useCallback(() => {
@@ -114,6 +171,7 @@ export default function HomeScreen() {
           items={[
             { label: 'Archivo', icon: 'archive-outline', onPress: () => router.push('/archive') },
             { label: 'Exportar DB', icon: 'download-outline', onPress: exportDb },
+            ...(__DEV__ ? [{ label: 'Limpiar notificaciones', icon: 'notifications-off-outline' as const, onPress: async () => { await cancelAllReminders(); alert('Notificaciones canceladas'); } }] : []),
           ]}
         />
       </View>
@@ -133,11 +191,12 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       ) : (
-        <ReorderableList
+        <DraggableFlatList
           data={habits}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
-          onReorder={handleReorder}
+          onDragEnd={handleDragEnd}
+          extraData={habits}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />
