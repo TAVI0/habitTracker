@@ -1,5 +1,5 @@
-import React, { useMemo, useRef } from 'react';
-import { ScrollView } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { InteractionManager, ScrollView, View } from 'react-native';
 import Svg from 'react-native-svg';
 import { CalendarRow } from './CalendarRow';
 import type { CellStatus, HabitConfig } from '../../types';
@@ -11,7 +11,8 @@ const WEEKS_YEAR = 52;
 const DAYS_PER_WEEK = 7; // Mon(0) … Sun(6)
 const CELL_SIZE = 12;
 const GAP = 2;
-const STEP = CELL_SIZE + GAP;
+export const CALENDAR_STEP = CELL_SIZE + GAP;
+const STEP = CALENDAR_STEP;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,13 +24,25 @@ type CellData = {
 type WeekData = CellData[];
 
 export type CalendarProps = {
+  habitId: number;
   completionDates: string[];
   color: string;
   config: HabitConfig;
   year?: number;
   /** "month" muestra solo el mes actual (para HabitCard). "year" muestra 52 semanas (para detalle). */
   mode?: 'month' | 'year';
+  /**
+   * When set, render exactly this many weeks ending on the current week and
+   * skip the horizontal ScrollView. Used by HabitCard so the grid fits the
+   * card width without scroll (no init-position flicker on remount).
+   */
+  weeksToShow?: number;
 };
+
+// Habit ids that already paid the initial SVG paint cost. Once a calendar has
+// rendered, subsequent remounts (reorder cell recycling, etc.) skip the
+// placeholder so users never see a gray flicker.
+const renderedHabits = new Set<number>();
 
 // ─── Date helpers (local to this file) ───────────────────────────────────────
 
@@ -63,19 +76,20 @@ function addDaysLocal(isoDate: string, offsetDays: number): string {
 function buildWeekGrid(
   completionSet: Set<string>,
   freeDaySet: Set<number>,
-  referenceDate: string
+  referenceDate: string,
+  weeksToShow: number = WEEKS_YEAR
 ): WeekData[] {
   // Terminar siempre en el próximo sábado (o hoy si ya es sábado)
   // así la semana actual siempre es visible, con días futuros en gris
   const refDow = getDayOfWeek(referenceDate); // 0=Dom … 6=Sáb
   const daysToSat = (6 - refDow + 7) % 7;    // 0 si ya es sábado
   const gridEnd = addDaysLocal(referenceDate, daysToSat); // próximo sábado
-  const gridStart = subtractDays(gridEnd, WEEKS_YEAR * DAYS_PER_WEEK - 1);
+  const gridStart = subtractDays(gridEnd, weeksToShow * DAYS_PER_WEEK - 1);
 
   const weeks: WeekData[] = [];
   let weekStart = gridStart;
 
-  for (let w = 0; w < WEEKS_YEAR; w++) {
+  for (let w = 0; w < weeksToShow; w++) {
     const week: CellData[] = [];
     for (let d = 0; d < DAYS_PER_WEEK; d++) {
       const date = addDaysLocal(weekStart, d);
@@ -152,28 +166,39 @@ function getCellStatus(
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-function CalendarComponent({ completionDates, color, config, mode = 'year' }: CalendarProps) {
+function CalendarComponent({ habitId, completionDates, color, config, mode = 'year', weeksToShow }: CalendarProps) {
   const referenceDate = today();
   const scrollRef = useRef<ScrollView>(null);
+
+  // Defer the SVG paint only on the FIRST mount per habit. On remounts (e.g.
+  // reorderable-list cell recycling) we skip the placeholder so reorder never
+  // shows a gray flicker.
+  const [ready, setReady] = useState(() => renderedHabits.has(habitId));
+  useEffect(() => {
+    if (ready) return;
+    const handle = InteractionManager.runAfterInteractions(() => {
+      renderedHabits.add(habitId);
+      setReady(true);
+    });
+    return () => handle.cancel();
+  }, [ready, habitId]);
 
   const weekGrid = useMemo(() => {
     const completionSet = new Set(completionDates);
     const freeDaySet = new Set(config.freeDays);
+    if (weeksToShow !== undefined) {
+      return buildWeekGrid(completionSet, freeDaySet, referenceDate, weeksToShow);
+    }
     return mode === 'month'
       ? buildMonthGrid(completionSet, freeDaySet, referenceDate)
       : buildWeekGrid(completionSet, freeDaySet, referenceDate);
-  }, [completionDates, config.freeDays, referenceDate, mode]);
+  }, [completionDates, config.freeDays, referenceDate, mode, weeksToShow]);
 
   const svgWidth = weekGrid.length * STEP;
   const svgHeight = DAYS_PER_WEEK * STEP;
 
-  return (
-    <ScrollView
-      ref={scrollRef}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
-    >
+  const svgContent = useMemo(
+    () => (
       <Svg width={svgWidth} height={svgHeight}>
         {weekGrid.map((week, colIndex) => (
           <CalendarRow
@@ -185,6 +210,27 @@ function CalendarComponent({ completionDates, color, config, mode = 'year' }: Ca
           />
         ))}
       </Svg>
+    ),
+    [weekGrid, color, svgWidth, svgHeight]
+  );
+
+  if (!ready) {
+    return <View style={{ width: svgWidth, height: svgHeight }} />;
+  }
+
+  // Fit-to-card mode: no scroll, no init-position flicker.
+  if (weeksToShow !== undefined) {
+    return <View style={{ width: svgWidth, height: svgHeight }}>{svgContent}</View>;
+  }
+
+  return (
+    <ScrollView
+      ref={scrollRef}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+    >
+      {svgContent}
     </ScrollView>
   );
 }

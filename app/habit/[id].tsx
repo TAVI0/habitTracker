@@ -142,6 +142,7 @@ export default function HabitDetailScreen() {
           <Text style={styles.sectionTitle}>Historial</Text>
           <View style={styles.calendarWrapper}>
             <Calendar
+              habitId={habit.id}
               completionDates={completions}
               color={habit.color}
               config={habit.config}

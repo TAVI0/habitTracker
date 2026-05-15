@@ -158,17 +158,26 @@ export function useHabits() {
   );
 
   const reorderHabits = useCallback(
-    (newOrder: number[]): void => {
+    (sortedData: Habit[]): void => {
       const originalHabits = habits;
-      const reorderedHabits = applyReorderLocally(habits, newOrder);
-      setHabits(reorderedHabits);
+      const newOrder = sortedData.map((h) => h.id);
 
-      persistReorderInTransaction(newOrder)
-        .catch((error) => {
+      const orderUnchanged =
+        originalHabits.length === sortedData.length &&
+        originalHabits.every((h, i) => h.id === sortedData[i].id);
+      if (orderUnchanged) return;
+
+      setHabits(sortedData);
+
+      // Defer DB persistence so the synchronous JS path returns instantly
+      // and React can commit the visual reorder without waiting for SQLite.
+      setTimeout(() => {
+        persistReorderInTransaction(newOrder).catch((error) => {
           console.error('Failed to reorder habits:', error);
           setHabits(originalHabits);
           showToast('Error al reordenar hábitos');
         });
+      }, 0);
     },
     [habits, persistReorderInTransaction]
   );

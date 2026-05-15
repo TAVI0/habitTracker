@@ -1,10 +1,16 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Dimensions } from 'react-native';
 import { Calendar } from './calendar';
+import { CALENDAR_STEP } from './calendar/Calendar';
 import { CheckboxToday } from './ui/CheckboxToday';
 import { StreakBadge } from './ui/StreakBadge';
 import { Colors, Spacing, Radius, Typography } from '../constants/theme';
 import type { Habit, StreakResult } from '../types';
+
+// Card calendar fits exactly the card's inner width — no horizontal scroll.
+// Inner width = screen − (list padding × 2) − (card padding × 2).
+const CARD_INNER_WIDTH = Dimensions.get('window').width - Spacing.md * 4;
+const CARD_WEEKS_TO_SHOW = Math.max(1, Math.floor(CARD_INNER_WIDTH / CALENDAR_STEP));
 
 type HabitCardProps = {
   habit: Habit;
@@ -50,9 +56,11 @@ function HabitCardComponent({
       {/* Calendar � 52 semanas, scrolleado al d�a de hoy */}
       <View style={styles.calendarWrapper}>
         <Calendar
+          habitId={habit.id}
           completionDates={completionDates}
           color={habit.color}
           config={habit.config}
+          weeksToShow={CARD_WEEKS_TO_SHOW}
         />
       </View>
 

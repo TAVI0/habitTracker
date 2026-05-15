@@ -13,7 +13,9 @@ type CacheEntry = {
 };
 
 const completionsCache = new Map<CacheKey, CacheEntry>();
-const CACHE_TTL_MS = 5000;
+// No TTL: the cache is invalidated explicitly on writes (toggleCompletion),
+// so any expiry just creates flicker windows on remount/swap without
+// improving correctness.
 const CACHE_MAX_SIZE = 50;
 
 function getCacheKey(habitId: number, fromDate: string, toDate: string): CacheKey {
@@ -22,15 +24,7 @@ function getCacheKey(habitId: number, fromDate: string, toDate: string): CacheKe
 
 function getCachedCompletions(key: CacheKey): string[] | null {
   const entry = completionsCache.get(key);
-  if (!entry) return null;
-  
-  const now = Date.now();
-  if (now - entry.timestamp > CACHE_TTL_MS) {
-    completionsCache.delete(key);
-    return null;
-  }
-  
-  return entry.completions;
+  return entry ? entry.completions : null;
 }
 
 function setCachedCompletions(key: CacheKey, completions: string[]): void {
@@ -57,10 +51,24 @@ export function useCompletions(
   // Initialize state with cached value if available (prevents flicker on re-mount)
   const cacheKey = getCacheKey(habitId, fromDate, toDate);
   const initialCompletions = getCachedCompletions(cacheKey) ?? [];
-  
+
   const [completions, setCompletions] = useState<string[]>(initialCompletions);
   const [loading, setLoading] = useState(initialCompletions.length === 0);
   const isToggling = useRef(false);
+
+  // When the hook is re-called with a different habitId/date range (e.g. a
+  // reorderable-list cell now points to a different habit), useState keeps
+  // the previous habit's state, so the consumer would briefly render with
+  // stale completions. Re-sync from the cache during render — React discards
+  // this render and re-runs with the corrected state, so no stale frame
+  // reaches the screen.
+  const lastKeyRef = useRef(cacheKey);
+  if (lastKeyRef.current !== cacheKey) {
+    lastKeyRef.current = cacheKey;
+    const fresh = getCachedCompletions(cacheKey) ?? [];
+    setCompletions(fresh);
+    setLoading(fresh.length === 0);
+  }
 
   const refetch = useCallback(async () => {
     try {

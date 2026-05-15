@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,12 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import DraggableFlatList, {
-  ScaleDecorator,
-  RenderItemParams,
-} from 'react-native-draggable-flatlist';
+import ReorderableList, {
+  ReorderableListReorderEvent,
+  ReorderableListRenderItemInfo,
+  reorderItems,
+  useReorderableDrag,
+} from 'react-native-reorderable-list';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,11 +32,19 @@ import type { Habit } from '../src/types';
 
 type HabitCardItemProps = {
   habit: Habit;
-  onLongPress?: () => void;
 };
 
-function HabitCardItemComponent({ habit, onLongPress }: HabitCardItemProps) {
+function HabitCardItemComponent({ habit }: HabitCardItemProps) {
   const router = useRouter();
+  // useReorderableDrag subscribes to ReorderableCellContext; its identity
+  // changes whenever the cell's index shifts during reorder. Stash it in a
+  // ref and expose a stable wrapper so HabitCard's React.memo isn't blown
+  // out on every drop.
+  const drag = useReorderableDrag();
+  const dragRef = useRef(drag);
+  dragRef.current = drag;
+  const stableDrag = useCallback(() => dragRef.current(), []);
+
   const yearStart = `${new Date().getFullYear()}-01-01`;
   const todayStr = today();
 
@@ -61,7 +71,7 @@ function HabitCardItemComponent({ habit, onLongPress }: HabitCardItemProps) {
       streak={streak}
       onToggleToday={handleToggleToday}
       onPress={handlePress}
-      onLongPress={onLongPress}
+      onLongPress={stableDrag}
     />
   );
 }
@@ -130,24 +140,21 @@ export default function HomeScreen() {
   );
 
   const renderItem = useCallback(
-    ({ item, drag, isActive }: RenderItemParams<Habit>) => (
-      <ScaleDecorator>
-        <HabitCardItem habit={item} onLongPress={drag} />
-      </ScaleDecorator>
+    ({ item }: ReorderableListRenderItemInfo<Habit>) => (
+      <HabitCardItem habit={item} />
     ),
     []
   );
 
   const keyExtractor = useCallback((item: Habit) => String(item.id), []);
 
-  const handleDragEnd = useCallback(
-    ({ data }: { data: Habit[] }) => {
-      if (__DEV__) console.log('[PERF] handleDragEnd called', Date.now());
-      const newOrder = data.map((h) => h.id);
-      reorderHabits(newOrder);
-      if (__DEV__) console.log('[PERF] handleDragEnd FINISHED', Date.now());
+  const handleReorder = useCallback(
+    ({ from, to }: ReorderableListReorderEvent) => {
+      if (from === to) return;
+      const reordered = reorderItems(habits, from, to);
+      reorderHabits(reordered);
     },
-    [reorderHabits]
+    [habits, reorderHabits]
   );
 
   const handleAddPress = useCallback(() => {
@@ -192,12 +199,14 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       ) : (
-        <DraggableFlatList
+        <ReorderableList
           data={habits}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
-          onDragEnd={handleDragEnd}
-          extraData={habits}
+          onReorder={handleReorder}
+          cellAnimations={{ opacity: 1, transform: [] }}
+          animationDuration={120}
+          shouldUpdateActiveItem={false}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />
